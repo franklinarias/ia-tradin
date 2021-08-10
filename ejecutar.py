@@ -1,17 +1,20 @@
-import sys
-import os
-from fpdf import FPDF
-from datetime import datetime
+import ast
+import configparser
 import csv
+import os
 import smtplib
+import sys
+from datetime import datetime
+from email import encoders
+from email.mime.base import MIMEBase
 from email.mime.multipart import MIMEMultipart
 from email.mime.text import MIMEText
-from email.mime.base import MIMEBase
-from email import encoders
-from graficarfuturo import graficar_futuro
-import configparser
-import ast
+
 from configupdater import ConfigUpdater
+from fpdf import FPDF
+
+from analizar import analizar
+from graficarfuturo import graficar_futuro
 
 path_img = "img"
 path_report = "reportes"
@@ -94,6 +97,7 @@ comprobar_config()
 general = configuracion['General']
 symbols = ast.literal_eval(general['symbols'])
 ciclos = int(general['ciclos'])
+emails = ast.literal_eval(general['emails'])
 
 
 class Symbols:
@@ -109,6 +113,10 @@ def ejecutar():
             os.system(f"python train.py {Symbols.listado[a]} {int(i)}")
             os.system(f"python test.py {Symbols.listado[a]} {int(i)}")
         graficar_futuro(Symbols.listado[a])
+        analizar(Symbols.listado[a])
+
+    # ps = os.getpid()
+    # os.kill(ps, 9)
 
 
 def leercsv():
@@ -143,12 +151,12 @@ def crearpdf(titulo, tipo):
     pdf.output(f"reporte_{tipo}_{fecha_rep}.pdf", "F")
 
 
-def email(tipo):
+def email(email, tipo):
     mail_content = f"Reporte Generado {fecha_hora_now}"
     # The mail addresses and password
     sender_address = 'franklin.arias89@gmail.com'
     sender_pass = 'mortdihaqlfpdyiw'
-    receiver_address = 'franklin.arias89@gmail.com'
+    receiver_address = email
     # Setup the MIME
     message = MIMEMultipart()
     message['From'] = sender_address
@@ -175,9 +183,19 @@ def email(tipo):
     print(f'Mail Sent {tipo}')
 
 
+def masiveEmail():
+    limit = len(emails)
+
+    for i in range(limit):
+        correo = emails[i]
+        print(emails[i])
+        email(email=correo, tipo='backtesting')
+        email(email=correo, tipo='tendencia')
+
+
 ejecutar()
 crearpdf(titulo='Backtesting', tipo='backtesting')
 crearpdf(titulo='Tendencia', tipo='tendencia')
-email(tipo='backtesting')
-email(tipo='tendencia')
-os.system("rm -rf data logs img csv-results *.pdf tmp results")
+masiveEmail()
+
+# os.system("rm -rf data logs img csv-results *.pdf tmp results")
